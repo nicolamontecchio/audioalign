@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # audio to audio alignment using particle filtering
-
 import numpy as np
 from scikits.audiolab import Sndfile
 from optparse import OptionParser
@@ -12,6 +11,14 @@ def KL(x1,x2) :
 def obsprob(x1,x2) :
 	#return KL(x1,x2)
 	return np.dot(x1 / np.sum(x1),x2 / np.sum(x2))
+
+def transprob(xo, xn):
+	global DT
+	global sigma2p
+	global sigma2t
+	po,to = xo
+	pn,tn = xn
+	return np.exp(-0.5*(((pn - po - to*DT)**2)/sigma2p + ((tn-to)**2)/sigma2t))
 
 def readwavefile(inputwav):
 	f = Sndfile(inputwav, 'r')
@@ -63,14 +70,32 @@ if __name__ == '__main__' :
 		# sample position of new particles
 		pn = po + to*DT + np.random.uniform(-Rp/2, Rp/2, ns)
 		tn = to + np.random.uniform(-Rt/2, Rt/2, ns)
-		# compute obs. probability
-		frames2observe = set(np.maximum(np.zeros(ns),np.floor(pn / DT)))
+		# compute obs. probabilities for all needed frames
+		frames2observe = np.floor(pn / DT)
+		for i in range(len(frames2observe)) :
+			if frames2observe[i] < 0 :
+				frames2observe[i] = 0.
+			if frames2observe[i] > len(audio2)-1  :
+				frames2observe[i] = len(audio2)-1
 		f2obsprob = {}
-		for f in frames2observe :
+		for f in set(frames2observe) :
 			f2obsprob[f] = obsprob(audio1[k], audio2[f])
+		# compute transition probability and multiply weights, along with obs. prob.
 		for i in range(ns) :
-			w *= f2obsprob[np.maximum(0, np.floor(pn[i]/DT))]
-		# compute transition probability
+			OP = f2obsprob[frames2observe[i]]
+			TP = transprob((po[i], to[i]), (pn[i], tn[i]))
+			#print (OP,TP)
+			w[i] *= OP * TP
+
+		w = w/np.sum(w)
+		# need resampling?
+		neff = 1./sum(w**2)
+		if neff < 10 :
+			print 'resampling needed'
+		# switch pointers
+		po,pn = pn,po
+		to,tn = tn,to
+		
 		
 
 
