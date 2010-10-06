@@ -18,7 +18,7 @@ def transprob(xo, xn):
 	global sigma2t
 	po,to = xo
 	pn,tn = xn
-	return np.exp(-0.5*(((pn - po - to*DT)**2)/sigma2p + ((tn-to)**2)/sigma2t))
+	return np.exp(-0.5*(((pn - po - to*DT)**2)/(sigma2p*DT) + ((tn-to)**2)/(sigma2t*DT)))
 
 def readwavefile(inputwav):
 	f = Sndfile(inputwav, 'r')
@@ -36,26 +36,43 @@ def readwavefile(inputwav):
 	return wav
 
 def resample(p,t,w) :
-	global ns
-	c = np.zeros(ns)
-	for i in range(ns-1) :
-		c[i+1] = c[i] + w[i+1]
-	i = 0
-	u0 = np.random.uniform()
+	ns = len(p)
+	c = np.zeros(ns+1)
+	for i in range(1,ns+1) :
+		c[i] = c[i-1] + w[i-1]
 	pp = np.zeros(ns)
 	tt = np.zeros(ns)
+	for i in range(ns) :
+		j = 0
+		r = np.random.uniform()
+		while j < ns+1 and r > c[j] :
+			j += 1
+		j -= 1
+		pp[i] = p[j]
+		tt[i] = t[j]
 	ww = np.ones(ns) / ns
-	for j in range(ns) :
-		uj = u0 + (j+0.)/ns
-		while i < ns and uj > c[i] :
-			i += 1
-		if i == ns :
-			i -= 1
-		pp[j] = p[i]
-		tt[j] = t[i]
 	return (pp,tt,ww)
 
 if __name__ == '__main__' :
+	# test resample
+	'''
+	p = np.array([1,2,3])
+	t = np.array([1,2,3])
+	w = np.array([0.5,0.25,0.25])
+	c = [0,0,0]
+	for i in range(100) :
+		a,b,x = resample(p,t,w)
+		for j in range(len(a)) :
+			if a[j] == 1 :
+				c[0] += 1
+			if a[j] == 2 :
+				c[1] += 1
+			if a[j] == 3 :
+				c[2] += 1
+	print c
+	exit(1)
+	'''
+	# actual script
 	parser = OptionParser(usage = 'usage: %prog [options] audio1 audio2')
 	parser.add_option("--ns", dest="ns", help='number of particles', default=200)
 	parser.add_option("--fft", dest="fftlen", help='analysis window length', default=2048)
@@ -77,13 +94,13 @@ if __name__ == '__main__' :
 	audio1 = np.abs(np.fft.fft(audio1))**2
 	audio2 = np.abs(np.fft.fft(audio2))**2
 	# init pf
-	Rp = 5.
-	Rt = 0.3
+	Rp = 2.
+	Rt = 0.1
 	sigma2p = 2.
-	sigma2t = 1.
+	sigma2t = .5
 	w = np.ones(ns) / ns	# weights
 	po = np.random.normal(0,1,ns)	# old position
-	to = np.random.normal(1,np.sqrt(0.5),ns) # old tempo (playback speed ratio)
+	to = np.random.normal(1,np.sqrt(0.1),ns) # old tempo (playback speed ratio)
 	# main loop
 	totframes = len(audio1)
 	for k in range(totframes) :
@@ -109,7 +126,7 @@ if __name__ == '__main__' :
 		# need resampling?
 		neff = 1./sum(w**2)
 		#print (k,neff)
-		if neff < 10 :
+		if neff < 2 :
 			pn,tn,w = resample(pn,tn,w)
 		# printout alignment
 		print '%10.4f,%10.4f' % (k*DT, np.sum(pn*w))
