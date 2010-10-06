@@ -35,6 +35,26 @@ def readwavefile(inputwav):
 	f.close()
 	return wav
 
+def resample(p,t,w) :
+	global ns
+	c = np.zeros(ns)
+	for i in range(ns-1) :
+		c[i+1] = c[i] + w[i+1]
+	i = 0
+	u0 = np.random.uniform()
+	pp = np.zeros(ns)
+	tt = np.zeros(ns)
+	ww = np.ones(ns) / ns
+	for j in range(ns) :
+		uj = u0 + (j+0.)/ns
+		while i < ns and uj > c[i] :
+			i += 1
+		if i == ns :
+			i -= 1
+		pp[j] = p[i]
+		tt[j] = t[i]
+	return (pp,tt,ww)
+
 if __name__ == '__main__' :
 	parser = OptionParser(usage = 'usage: %prog [options] audio1 audio2')
 	parser.add_option("--ns", dest="ns", help='number of particles', default=200)
@@ -43,8 +63,8 @@ if __name__ == '__main__' :
 	if len(args) != 2 :
 		parser.print_help()
 		exit(1)
-	ns = options.ns
-	fftlen = options.fftlen
+	ns = int(options.ns)
+	fftlen = int(options.fftlen)
 	DT = fftlen / 44100.
 	# load audio files
 	audio1 = readwavefile(args[0])
@@ -84,14 +104,15 @@ if __name__ == '__main__' :
 		for i in range(ns) :
 			OP = f2obsprob[frames2observe[i]]
 			TP = transprob((po[i], to[i]), (pn[i], tn[i]))
-			#print (OP,TP)
 			w[i] *= OP * TP
-
 		w = w/np.sum(w)
 		# need resampling?
 		neff = 1./sum(w**2)
+		#print (k,neff)
 		if neff < 10 :
-			print 'resampling needed'
+			pn,tn,w = resample(pn,tn,w)
+		# printout alignment
+		print np.sum(pn*w)
 		# switch pointers
 		po,pn = pn,po
 		to,tn = tn,to
