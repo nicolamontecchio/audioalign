@@ -98,13 +98,13 @@ if __name__ == '__main__' :
 	audio1 = np.abs(np.fft.fft(audio1))**2
 	audio2 = np.abs(np.fft.fft(audio2))**2
 	# init pf
-	Rp = 1.
-	Rt = 0.1
-	sigma2p = 2.
-	sigma2t = .1
+	Rp = .3
+	Rt = .6
+	sigma2p = .1
+	sigma2t = .2
 	w = np.ones(ns) / ns	# weights
-	po = np.random.normal(0,1,ns)	# old position
-	to = np.random.normal(1,np.sqrt(0.1),ns) # old tempo (playback speed ratio)
+	po = np.random.normal(0,2.,ns)	# old position
+	to = np.random.normal(1,.1,ns) # old tempo (playback speed ratio)
 	# main loop
 	totframes = len(audio1)
 	for k in range(totframes) :
