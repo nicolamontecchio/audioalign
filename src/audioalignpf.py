@@ -5,12 +5,16 @@ from scikits.audiolab import Sndfile
 from optparse import OptionParser
 
 def KL(x1,x2) :
-	pass
-	return 0
+	x1 = x1/sum(x1)
+	x2 = x2/sum(x2)
+	x1 = np.maximum(x1,0.00001)
+	x2 = np.maximum(x2,0.00001)
+	kl = np.exp(-np.sum(x1*np.log(x1/x2)))
+	return kl
 
 def obsprob(x1,x2) :
-	#return KL(x1,x2)
-	return np.dot(x1 / np.sum(x1),x2 / np.sum(x2))
+	return KL(x1,x2)
+	#return np.dot(x1 / np.sum(x1),x2 / np.sum(x2))
 
 def transprob(xo, xn):
 	global DT
@@ -94,10 +98,10 @@ if __name__ == '__main__' :
 	audio1 = np.abs(np.fft.fft(audio1))**2
 	audio2 = np.abs(np.fft.fft(audio2))**2
 	# init pf
-	Rp = 2.
+	Rp = 1.
 	Rt = 0.1
 	sigma2p = 2.
-	sigma2t = .5
+	sigma2t = .1
 	w = np.ones(ns) / ns	# weights
 	po = np.random.normal(0,1,ns)	# old position
 	to = np.random.normal(1,np.sqrt(0.1),ns) # old tempo (playback speed ratio)
@@ -126,10 +130,10 @@ if __name__ == '__main__' :
 		# need resampling?
 		neff = 1./sum(w**2)
 		#print (k,neff)
-		if neff < 2 :
+		if neff < 5 :
 			pn,tn,w = resample(pn,tn,w)
 		# printout alignment
-		print '%10.4f,%10.4f' % (k*DT, np.sum(pn*w))
+		print '%10.4f,%10.4f, %10.4f, %10.4f' % (k*DT, np.sum(pn*w), np.sum(tn*w), neff)
 		# switch pointers
 		po,pn = pn,po
 		to,tn = tn,to
