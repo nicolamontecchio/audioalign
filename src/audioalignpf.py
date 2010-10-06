@@ -2,7 +2,7 @@
 # audio to audio alignment using particle filtering
 
 import numpy as np
-from scikits.audiolab import Sndfile, Format
+from scikits.audiolab import Sndfile
 from optparse import OptionParser
 
 def KL(x1,x2) :
@@ -10,7 +10,8 @@ def KL(x1,x2) :
 	return 0
 
 def obsprob(x1,x2) :
-	return KL(x1,x2)
+	#return KL(x1,x2)
+	return np.dot(x1 / np.sum(x1),x2 / np.sum(x2))
 
 def readwavefile(inputwav):
 	f = Sndfile(inputwav, 'r')
@@ -43,9 +44,11 @@ if __name__ == '__main__' :
 	audio1 = audio1[:len(audio1) - (len(audio1) % fftlen)]
 	audio2 = readwavefile(args[1])
 	audio2 = audio2[:len(audio2) - (len(audio2) % fftlen)]
-	# reshape audio files so that each row is an audio frame
+	# reshape audio files so that each row is an audio frame then do FFT
 	audio1 = np.reshape(audio1, (-1, fftlen))
 	audio2 = np.reshape(audio2, (-1, fftlen))
+	audio1 = np.abs(np.fft.fft(audio1))**2
+	audio2 = np.abs(np.fft.fft(audio2))**2
 	# init pf
 	Rp = 5.
 	Rt = 0.3
@@ -60,7 +63,14 @@ if __name__ == '__main__' :
 		# sample position of new particles
 		pn = po + to*DT + np.random.uniform(-Rp/2, Rp/2, ns)
 		tn = to + np.random.uniform(-Rt/2, Rt/2, ns)
+		# compute obs. probability
+		frames2observe = set(np.maximum(np.zeros(ns),np.floor(pn / DT)))
+		f2obsprob = {}
+		for f in frames2observe :
+			f2obsprob[f] = obsprob(audio1[k], audio2[f])
+		for i in range(ns) :
+			w *= f2obsprob[np.maximum(0, np.floor(pn[i]/DT))]
+		# compute transition probability
 		
-
 
 
