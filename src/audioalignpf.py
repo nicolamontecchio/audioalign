@@ -112,7 +112,7 @@ if __name__ == '__main__' :
 		if neff < 10 :
 			pn,tn,w = resample(pn,tn,w)
 		# printout alignment
-		print np.sum(pn*w)
+		print '%10.4f,%10.4f' % (k*DT, np.sum(pn*w))
 		# switch pointers
 		po,pn = pn,po
 		to,tn = tn,to
